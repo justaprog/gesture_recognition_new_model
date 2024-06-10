@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import mediapipe as mp
 from mediapipe.framework.formats import landmark_pb2
 import math
-
+import cv2
 plt.rcParams.update({
     'axes.spines.top': False,
     'axes.spines.right': False,
@@ -78,3 +78,37 @@ def display_batch_of_images_with_gestures_and_hand_landmarks(images, results):
     plt.tight_layout()
     plt.subplots_adjust(wspace=SPACING, hspace=SPACING)
     plt.show()
+
+def annotate_image_with_gesture_and_landmarks(image, result):
+    """Displays a batch of images with the gesture category and its score along with the hand landmarks."""
+    # Images and labels.
+
+    gesture = result[0]
+    hand_landmarks_list = result[1]
+    image = image.numpy_view()
+    annotated_image = image.copy()
+
+    # Draw hand landmarks.
+    for hand_landmarks in hand_landmarks_list:
+        hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
+        hand_landmarks_proto.landmark.extend([
+        landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in hand_landmarks
+        ])
+        mp_drawing.draw_landmarks(
+        annotated_image,
+        hand_landmarks_proto,
+        mp_hands.HAND_CONNECTIONS,
+        mp_drawing_styles.get_default_hand_landmarks_style(),
+        mp_drawing_styles.get_default_hand_connections_style())
+
+    # Put the gesture category and its score on the image
+    title = f"{gesture.category_name} ({gesture.score:.2f})"
+    text_size = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
+    text_x = (annotated_image.shape[1] - text_size[0]) // 2
+    text_y = (annotated_image.shape[0] + text_size[1]) // 2 - 20  # Slightly above the center
+
+    cv2.putText(annotated_image, title, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+    
+    return annotated_image,gesture.category_name
+
+
